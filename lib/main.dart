@@ -105,6 +105,15 @@ class StreakData {
       healthyTip: json['healthy_tip'],
     );
   }
+  factory StreakData.fromOJson(Map<String, dynamic> json) {
+    return StreakData(
+      currentStreak: json['current_streak'],
+      longestStreak: json['longest_streak'],
+      totalUploads: json['total_uploads'],
+      lastUpload: json['last_upload'],
+      healthyTip: "Yesterday you ate well - Keep up the good work!",
+    );
+  }
 }
 
 class _ImagePickerScreenState extends State<ImagePickerScreen> {
@@ -118,7 +127,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchAllData();
+    _fetchOStreakData();
   }
 
   Future<void> _fetchAllData() async {
@@ -128,6 +137,39 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       _fetchHistoricalData(),
     ]);
   }
+  
+  Future<void> _fetchOStreakData() async {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final response = await http.get(
+          Uri.parse('https://serverless.on-demand.io/apps/testing/info'),
+          headers: {
+            'Authorization': 'Bearer YOUR_AUTH_TOKEN_HERE',
+            'Content-Type': 'application/json',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          setState(() {
+            _streakData = StreakData.fromOJson(jsonDecode(response.body));
+            // _nutrientData = NutrientData.fromJson(jsonDecode(response.body));
+          });
+        } else {
+          throw Exception('Failed to load streak data');
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
 
   Future<void> _fetchStreakData() async {
     setState(() {
@@ -146,7 +188,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       if (response.statusCode == 200) {
         setState(() {
           _streakData = StreakData.fromJson(jsonDecode(response.body));
-          _nutrientData = NutrientData.fromJson(jsonDecode(response.body));
+          // _nutrientData = NutrientData.fromJson(jsonDecode(response.body));
         });
       } else {
         throw Exception('Failed to load streak data');
@@ -170,6 +212,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
           _image = File(pickedFile.path);
         });
         await _fetchStreakData(); // Fetch new streak data after image selection
+        await _fetchAllData(); // Fetch new streak data after image selection
       }
     } catch (e) {
       print('Error picking image: $e');
